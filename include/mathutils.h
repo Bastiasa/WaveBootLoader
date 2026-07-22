@@ -55,4 +55,21 @@ static inline float WaveLerp(float a, float b, float t)
     return a + (b - a) * t;
 }
 
+static inline UINT32 WaveLerpColor(UINT32 colorA, UINT32 colorB, float t)
+{
+    UINT32 ar = (colorA >> 16) & 0xFF;
+    UINT32 ag = (colorA >> 8)  & 0xFF;
+    UINT32 ab =  colorA        & 0xFF;
+
+    UINT32 br = (colorB >> 16) & 0xFF;
+    UINT32 bg = (colorB >> 8)  & 0xFF;
+    UINT32 bb =  colorB        & 0xFF;
+
+    UINT32 r = (UINT32)(WaveLerp((float)ar, (float)br, t) + 0.5f);
+    UINT32 g = (UINT32)(WaveLerp((float)ag, (float)bg, t) + 0.5f);
+    UINT32 b = (UINT32)(WaveLerp((float)ab, (float)bb, t) + 0.5f);
+
+    return (r << 16) | (g << 8) | b;
+}
+
 #endif

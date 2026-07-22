@@ -1,73 +1,34 @@
+#include <graphics/util.h>
 #include "rectangle.h"
+
 #include "mathutils.h"
 #include "efi.h"
 #include "efilib.h"
-#include <graphics/util.h>
 
 
 void OnRectangleForRender(void *object)
 {
     WAVE_RECTANGLE *rectangle = (WAVE_RECTANGLE *)object;
 
-    UINT32 *fb =
-        (UINT32 *)rectangle->Object.Canvas->BackBuffer;
+    OnObjectRender(&rectangle->Object);
 
-    UINT32 stride =
-        rectangle->Object.Canvas->Gop->Mode->Info->PixelsPerScanLine;
+    VEC2 scaledSize = VectorMultiply(
+        rectangle->Size, 
+        rectangle->Object.FinalScale
+    );
 
-    INT32 width  = WaveRound(rectangle->Size.x);
-    INT32 height = WaveRound(rectangle->Size.y);
-
-    INT32 x = WaveRound(rectangle->Object.Position.x);
-    INT32 y = WaveRound(rectangle->Object.Position.y);
-
-    UINT32 screenWidth = rectangle->Object.Canvas->Width;
-    UINT32 screenHeight = rectangle->Object.Canvas->Height;
-
-    if (x >= (INT32)screenWidth ||
-        y >= (INT32)screenHeight)
-    {
-        return;
-    }
-
-    if (x + width <= 0 ||
-        y + height <= 0)
-    {
-        return;
-    }
-
-    if (x < 0)
-    {
-        width += x;
-        x = 0;
-    }
-
-    if (y < 0)
-    {
-        height += y;
-        y = 0;
-    }
-
-    if (x + width > (INT32)screenWidth)
-    {
-        width = screenWidth - x;
-    }
-
-    if (y + height > (INT32)screenHeight)
-    {
-        height = screenHeight - y;
-    }
-
-    if (width <= 0 || height <= 0)
-    {
-        return;
-    }
-
-    for (UINT32 j = 0; j < height; j++)
-    {
-        UINT32 *row = fb + (y + j) * stride + x;
-        Fill32(row, rectangle->Color, width);
-    }
+    VEC2 anchoredPosition = ANCHORED_POSITION(
+        rectangle->Object.FinalPosition,
+        rectangle->AnchorPoint,
+        scaledSize
+    );
+    
+    DrawFilledRect(
+        rectangle->Object.Canvas,
+        anchoredPosition,
+        scaledSize,
+        rectangle->Color
+    );
 }
 
 WAVE_RECTANGLE *CreateRectangle(
@@ -93,6 +54,7 @@ WAVE_RECTANGLE *CreateRectangle(
     rectangle->Object = object;
     rectangle->Color = color;
     rectangle->Size = size;
+    rectangle->AnchorPoint = WV2(0, 0);
 
     return rectangle;
 }
