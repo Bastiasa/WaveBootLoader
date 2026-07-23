@@ -92,6 +92,17 @@ void DrawImage(
         }
     }
 }
+static inline void FillSpan(
+    UINT32 *dst,
+    INT32 count,
+    UINT32 color
+)
+{
+    for (INT32 i = 0; i < count; i++)
+    {
+        dst[i] = color;
+    }
+}
 
 void DrawRoundedRect(
     WAVE_CANVAS_MANAGER *canvas,
@@ -104,42 +115,52 @@ void DrawRoundedRect(
     UINT32 *fb = (UINT32 *)canvas->BackBuffer;
     UINT32 stride = canvas->Gop->Mode->Info->PixelsPerScanLine;
 
-    INT32 width  = WaveRound(size.x);
-    INT32 height = WaveRound(size.y);
-
     INT32 x = WaveRound(position.x);
     INT32 y = WaveRound(position.y);
 
-    UINT32 screenWidth  = canvas->Width;
-    UINT32 screenHeight = canvas->Height;
+    INT32 width  = WaveRound(size.x);
+    INT32 height = WaveRound(size.y);
 
     if (width <= 0 || height <= 0)
     {
         return;
     }
 
-    // Clampear el radio para que no sea más grande que la mitad del lado menor
-    INT32 maxRadius = (width < height ? width : height) / 2;
-    INT32 r = (INT32) radius;
+    INT32 r = (INT32)radius;
+
+    INT32 maxRadius =
+        ((width < height) ? width : height) / 2;
+
     if (r > maxRadius)
     {
         r = maxRadius;
     }
-    if (r < 0)
+
+    if (r <= 0)
     {
-        r = 0;
+        DrawFilledRect(
+            canvas,
+            position,
+            size,
+            color
+        );
+        return;
     }
 
-    // Bounding box clipping (igual que DrawFilledRect)
+    UINT32 screenWidth  = canvas->Width;
+    UINT32 screenHeight = canvas->Height;
+
     INT32 startX = x;
     INT32 startY = y;
-    INT32 endX = x + width;
-    INT32 endY = y + height;
+    INT32 endX   = x + width;
+    INT32 endY   = y + height;
 
-    if (startX >= (INT32)screenWidth || startY >= (INT32)screenHeight)
+    if (startX >= (INT32)screenWidth ||
+        startY >= (INT32)screenHeight)
     {
         return;
     }
+
     if (endX <= 0 || endY <= 0)
     {
         return;
@@ -147,67 +168,76 @@ void DrawRoundedRect(
 
     if (startX < 0) startX = 0;
     if (startY < 0) startY = 0;
-    if (endX > (INT32)screenWidth)  endX = screenWidth;
-    if (endY > (INT32)screenHeight) endY = screenHeight;
+
+    if (endX > (INT32)screenWidth)
+        endX = screenWidth;
+
+    if (endY > (INT32)screenHeight)
+        endY = screenHeight;
 
     INT32 rSquared = r * r;
 
     for (INT32 py = startY; py < endY; py++)
     {
-        // Posición relativa al rectángulo (0,0 = esquina superior izquierda)
         INT32 localY = py - y;
 
-        for (INT32 px = startX; px < endX; px++)
+        INT32 inset = 0;
+
+        if (localY < r)
         {
-            INT32 localX = px - x;
+            INT32 dy = r - localY - 1;
 
-            // ¿Estamos dentro de alguna de las 4 zonas de esquina?
-            INT32 cornerX = -1;
-            INT32 cornerY = -1;
+            INT32 dx = 0;
 
-            if (localX < r && localY < r)
+            while ((dx * dx + dy * dy) < rSquared)
             {
-                // Esquina superior izquierda
-                cornerX = r;
-                cornerY = r;
-            }
-            else if (localX >= width - r && localY < r)
-            {
-                // Esquina superior derecha
-                cornerX = width - r - 1;
-                cornerY = r;
-            }
-            else if (localX < r && localY >= height - r)
-            {
-                // Esquina inferior izquierda
-                cornerX = r;
-                cornerY = height - r - 1;
-            }
-            else if (localX >= width - r && localY >= height - r)
-            {
-                // Esquina inferior derecha
-                cornerX = width - r - 1;
-                cornerY = height - r - 1;
+                dx++;
             }
 
-            if (cornerX != -1)
-            {
-                // Estamos en una zona de esquina: verificar si cae dentro del círculo
-                INT32 dx = localX - cornerX;
-                INT32 dy = localY - cornerY;
-                INT32 distSquared = dx * dx + dy * dy;
-
-                if (distSquared > rSquared)
-                {
-                    // Fuera del círculo de la esquina: no dibujar (es el "corte")
-                    continue;
-                }
-            }
-
-            fb[py * stride + px] = color;
+            inset = r - dx;
         }
+        else if (localY >= height - r)
+        {
+            INT32 dy =
+                localY - (height - r);
+
+            INT32 dx = 0;
+
+            while ((dx * dx + dy * dy) < rSquared)
+            {
+                dx++;
+            }
+
+            inset = r - dx;
+        }
+
+        INT32 left  = x + inset;
+        INT32 right = x + width - inset;
+
+        if (left < startX)
+            left = startX;
+
+        if (right > endX)
+            right = endX;
+
+        INT32 spanWidth = right - left;
+
+        if (spanWidth <= 0)
+        {
+            continue;
+        }
+
+        UINT32 *row =
+            fb + py * stride + left;
+
+        FillSpan(
+            row,
+            spanWidth,
+            color
+        );
     }
 }
+
 
 void DrawFilledRect(WAVE_CANVAS_MANAGER *canvas, VEC2 position, VEC2 size, UINT32 color)
 {

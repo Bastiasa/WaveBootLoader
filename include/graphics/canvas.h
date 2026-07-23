@@ -28,6 +28,7 @@ void PutPixel(WAVE_CANVAS_MANAGER *canvas, UINT32 x, UINT32 y, UINT32 color);
 void RenderCanvas(WAVE_CANVAS_MANAGER *canvas);
 
 void CanvasAdd(WAVE_CANVAS_MANAGER *canvas, void *child);
+BOOLEAN CanvasRemove(WAVE_CANVAS_MANAGER *canvas, void*child);
 
 void CanvasStep(WAVE_CANVAS_MANAGER *canvas);
 

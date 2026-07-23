@@ -88,6 +88,17 @@ EFI_STATUS SetDirectBootFlag(EFI_HANDLE ImageHandle, BOOLEAN Enable)
             0
         );
         if (!EFI_ERROR(Status)) {
+            UINT8 Dummy = 1;
+
+            Status = uefi_call_wrapper(
+                FlagFile->Write,
+                3,
+                FlagFile,
+                &(UINTN){1},
+                &Dummy
+            );
+
+            uefi_call_wrapper(FlagFile->Flush, 1, FlagFile);
             uefi_call_wrapper(FlagFile->Close, 1, FlagFile);
         }
     } else {

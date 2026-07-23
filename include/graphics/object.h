@@ -7,13 +7,16 @@
 typedef struct 
 {
     void *Parent;
+    
     WAVE_CANVAS_MANAGER *Canvas;
-    CHAR16 *Name;
-    uint8_t Visible;
 
+    CHAR16 *Name;
+    
+    UINT8 Visible;
     VEC2 Position;
     VEC2 Scale;
 
+    UINT8 FinalVisible;
     VEC2 FinalPosition;
     VEC2 FinalScale;
 

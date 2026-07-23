@@ -57,6 +57,24 @@ void CanvasAdd(WAVE_CANVAS_MANAGER *canvas, void *child) {
     arrput(canvas->Children, child);
 }
 
+BOOLEAN CanvasRemove(WAVE_CANVAS_MANAGER *canvas, void*child) {
+    
+    for (size_t i = 0; i < arrlen(canvas->Children); i++)
+    {
+        void *iteratedChild = canvas->Children[i];
+
+        if (iteratedChild == child)
+        {
+            //arrdel(canvas->Children, i);
+            return TRUE;
+        }
+        
+    }
+
+    return FALSE;
+    
+}
+
 void RenderChild(void *child) {
     WAVE_GRAPHIC_OBJECT *CastedChild = (WAVE_GRAPHIC_OBJECT *)child;
 
@@ -64,8 +82,27 @@ void RenderChild(void *child) {
     {
         return;
     }
+    
+    WAVE_GRAPHIC_OBJECT *CastedParent = (WAVE_GRAPHIC_OBJECT *) CastedChild->Parent;
 
-    if (CastedChild->Visible)
+
+    if (CastedParent != NULL)
+    {
+        if (!CastedParent->Visible)
+        {
+            CastedChild->FinalVisible = FALSE;
+        } else {
+            CastedChild->FinalVisible = CastedChild->Visible;
+        }
+        
+    } else {
+        CastedChild->FinalVisible = CastedChild->Visible;
+    }
+        
+    
+    
+
+    if (CastedChild->FinalVisible)
     {
         CastedChild->Render(child);
     }

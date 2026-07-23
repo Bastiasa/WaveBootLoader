@@ -3,6 +3,8 @@
 
 #include "efi_alloc.h"
 
+#define memmove EfiMemMove
+
 #define STBDS_REALLOC(c, p, s) EfiReallocWrapper(p, s)
 #define STBDS_FREE(c, p) EfiFreeWrapper(p)
 

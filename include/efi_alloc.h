@@ -1,20 +1,46 @@
-// en algún .h común, por ejemplo efi_alloc.h
 #include <efi.h>
 #include <efilib.h>
+#include <stddef.h>
 
-static inline void *EfiReallocWrapper(void *ptr, int newSize) {
-    // AllocatePool no preserva contenido; para stb_ds esto normalmente basta
-    // porque stb_ds siempre copia sus propios datos a mano internamente en growth,
-    // pero para estar seguros, copiamos manualmente si había ptr previo.
-    void *newPtr = AllocatePool(newSize);
-    if (newPtr && ptr) {
-        // No conocemos el tamaño viejo exacto sin trackearlo aparte;
-        // ver nota abajo.
-        FreePool(ptr);
+typedef struct {
+    UINTN size;
+} EfiAllocHeader;
+
+static inline void *EfiReallocWrapper(void *ptr, UINTN newSize) {
+    EfiAllocHeader *oldHeader = NULL;
+    UINTN oldSize = 0;
+
+    if (ptr) {
+        oldHeader = (EfiAllocHeader *)((UINT8 *)ptr - sizeof(EfiAllocHeader));
+        oldSize = oldHeader->size;
     }
+
+    UINTN totalNewSize = newSize + sizeof(EfiAllocHeader);
+    void *newRaw = AllocatePool(totalNewSize);
+    if (!newRaw) return NULL;
+
+    EfiAllocHeader *newHeader = (EfiAllocHeader *)newRaw;
+    newHeader->size = newSize;
+
+    void *newPtr = (UINT8 *)newRaw + sizeof(EfiAllocHeader);
+
+    if (ptr) {
+        UINTN copySize = (oldSize < newSize) ? oldSize : newSize;
+        CopyMem(newPtr, ptr, copySize);
+        FreePool(oldHeader);
+    }
+
     return newPtr;
 }
 
 static inline void EfiFreeWrapper(void *ptr) {
-    if (ptr) FreePool(ptr);
+    if (ptr) {
+        EfiAllocHeader *header = (EfiAllocHeader *)((UINT8 *)ptr - sizeof(EfiAllocHeader));
+        FreePool(header);
+    }
+}
+
+static inline void *EfiMemMove(void *dest, const void *src, size_t len) {
+    CopyMem(dest, (void *)src, (UINTN)len);
+    return dest;
 }

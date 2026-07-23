@@ -1,2 +1,4 @@
 build
 test
+images
+include/img/*

@@ -98,11 +98,13 @@ WAVE_GRAPHIC_OBJECT CreateEmptyObject(WAVE_CANVAS_MANAGER *canvas, VEC2 position
         .Children = NULL,
         .Canvas = canvas,
         
+        .Visible = TRUE,
+        .FinalVisible = TRUE,
+        
         .Position = position,
         .Scale = VECTOR2_ONE,
 
         .FinalPosition = position,
-        .FinalScale = VECTOR2_ONE,
-        .Visible = 1
+        .FinalScale = VECTOR2_ONE
     };
 }

@@ -7,10 +7,20 @@
 #include <efi.h>
 #include <efilib.h>
 #include <mathutils.h>
+
+
+#include <img/grub_icon.h>
+#include <img/ubuntu_icon.h>
+#include <img/windows_icon.h>
+
 #include <img/windows_button.h>
 #include <img/ubuntu_button.h>
+
 #include <img/grub_button_focus.h>
 #include <img/grub_button_normal.h>
+
+#include <stb_ds.h>
+
 
 #include "boot.h"
 
@@ -18,6 +28,10 @@ static WAVE_CANVAS_MANAGER *Canvas = NULL;
 
 static inline void Add(void *child) {
     CanvasAdd(Canvas, child);
+}
+
+static inline BOOLEAN Remove(void *child) {
+    return CanvasRemove(Canvas, child);
 }
 
 static WAVE_RND_RECT *WindowsButton;
@@ -40,7 +54,7 @@ static WAVE_IMAGE *GrubButton;
     Canvas->Height / 2.0f \
 )
 
-#define INIT_DELAY_FRAMES 60 
+#define INIT_DELAY_FRAMES 20 
 
 enum BUTTON_FOCUS {
     NONE_SELECTED,
@@ -50,7 +64,7 @@ enum BUTTON_FOCUS {
 };
 
 #define SELECTED_SCALE (VEC2) {.x = 1.1f, .y = 1.1f}
-#define TRANSITION_WEIGHT 0.5f
+#define TRANSITION_WEIGHT 0.8f
 
 enum BUTTON_FOCUS CurrentFocus = NONE_SELECTED;
 
@@ -128,7 +142,6 @@ void CreateMainButtons() {
     ObjectAddChild(UbuntuButton, UbuntuLogo);
 }
 
-
 void CreateGrubButton() {
     GrubButton = CreateImage(
         Canvas,
@@ -156,8 +169,6 @@ void InitUI(WAVE_CANVAS_MANAGER *GivenCanvas) {
 
     CreateMainButtons();
     CreateGrubButton();
-    
-    Print(L"Icons created\n");
 }
 
 
@@ -236,19 +247,50 @@ void UpdateGrubButton() {
     
 }
 
+
+static WAVE_IMAGE *CurrentBootImage;
+
+void SetCurrentBoot(WAVE_IMAGE_METADATA *meta) {
+    HideObject(GrubButton);
+    HideObject(WindowsButton);
+    HideObject(UbuntuButton);
+
+    CurrentBootImage = CreateImage(
+        Canvas,
+        meta,
+        WV2(Canvas->Width / 2.0f, Canvas->Height / 2.0f),
+        DIAGONAL_V2(300.0f)
+    );
+
+    CurrentBootImage->AnchorPoint = DIAGONAL_V2(.5f);
+    Add(CurrentBootImage);
+}
+
+static BOOLEAN BootRequestAlreadyDone = FALSE;
+static BOOLEAN BootRequestEnabled = TRUE;
+
 void OnBootRequest() {
+
+    if (!BootRequestEnabled)
+    {
+        return;
+    }
+    
+    BootRequestAlreadyDone = TRUE;
+    BootRequestEnabled = FALSE;
+
     switch (CurrentFocus)
     {
     case WINDOWS_SELECTED:
-        BootWindows(Canvas->ImageHandle);
+        SetCurrentBoot(&windows_icon_metadata);
         break;
 
     case UBUNTU_SELECTED:
-        BootUbuntu(Canvas->ImageHandle);
+        SetCurrentBoot(&ubuntu_icon_metadata);
         break;
     
     case GRUB_SELECTED:
-        BootGrub(Canvas->ImageHandle);
+        SetCurrentBoot(&grub_icon_metadata);
         break;
         
     default:
@@ -256,7 +298,39 @@ void OnBootRequest() {
     }
 }
 
+void CheckBoot() {
+    if (BootRequestAlreadyDone)
+    {
+        BootRequestAlreadyDone = FALSE;
+
+        switch (CurrentFocus)
+        {
+        case WINDOWS_SELECTED:
+            BootWindows(Canvas->ImageHandle);
+            break;
+        case UBUNTU_SELECTED:
+            BootUbuntu(Canvas->ImageHandle);
+            break;
+
+        case GRUB_SELECTED:
+            BootGrub(Canvas->ImageHandle);
+            break;
+        }
+    }
+
+}
+
 void OnUpdate() {
+
+    CheckBoot();
+
+
+    if (!BootRequestEnabled)
+    {
+        return;
+    }
+    
+    
 
     if (DelayCounter <= INIT_DELAY_FRAMES)
     {
